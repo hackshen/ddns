@@ -1,0 +1,2 @@
+# ddns
+Aliyun DDNS javascript
