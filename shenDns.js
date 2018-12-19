@@ -21,7 +21,7 @@ const client = new Core({
     apiVersion: '2015-01-09'
 });
 
-const DDNS = (target, cb) => {
+const DDNS = async (target, cb) => {
     const ADDRESS = target.address;
     const SUBDOMAIN = target.hostname;
     const DOMAINNAME = SUBDOMAIN.split('.').slice(-2).join('.');
@@ -51,9 +51,11 @@ const DDNS = (target, cb) => {
         method: 'POST'
     };
 
-    client.request(describeSubParams.Action, describeSubParams, requestOption).then((result) => {
-        let shouldUpdate = false;
-        let shouldAdd = true;
+    let shouldUpdate = false;
+    let shouldAdd = true;
+
+    await client.request(describeSubParams.Action, describeSubParams, requestOption).then((result) => {
+
         result.DomainRecords.Record
             .filter(record => record.RR === updateParmas.RR)
             .forEach(record => {
@@ -63,36 +65,35 @@ const DDNS = (target, cb) => {
                     updateParmas.RecordId = record.RecordId;
                 }
             });
-
-        if (shouldUpdate) {
-            client.request(updateParmas.Action, updateParmas, requestOption).then((result) => {
-                cb('Update success!');
-            }, (ex) => {
-                console.log(ex);
-            });
-        }
-
-        if (shouldAdd) {
-            client.request(addParmas.Action, addParmas, requestOption).then((result) => {
-                cb('add success!');
-            }, (ex) => {
-                console.log(ex);
-            });
-        }
-
-        if (!shouldAdd && !shouldUpdate) {
-            cb('no update');
-        }
-
     }, (ex) => {
         console.log(ex);
-    })
+    });
+
+    if (shouldUpdate) {
+        await client.request(updateParmas.Action, updateParmas, requestOption).then((result) => {
+            cb('Update success!');
+        }, (ex) => {
+            console.log(ex);
+        });
+    }
+
+    if (shouldAdd) {
+        await client.request(addParmas.Action, addParmas, requestOption).then((result) => {
+            cb('add success!');
+        }, (ex) => {
+            console.log(ex);
+        });
+    }
+
+    if (!shouldAdd && !shouldUpdate) {
+        cb('无更新');
+    }
 }
 
 for (let hostname of hostNames) {
     let target = {
         hostname: hostname,
-        address: '127.0.0.1'
+        address: address
     };
     DDNS(target, (msg) => {
         console.log(`${new Date()} ==>  ${target.hostname} ==> ${msg}`)
