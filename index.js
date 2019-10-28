@@ -1,13 +1,16 @@
 const Core = require('@alicloud/pop-core');
 const os = require('os');
-const config = require('./config.json');
+const config = require('./config');
+const colors = require('colors');
 
 const {
     hostNames
 } = config;
 
+// 获取本地IP
 const Interfaces = os.networkInterfaces();
 let address = null;
+
 for (let i = 0; i < Interfaces.en0.length; i++) {
     if (Interfaces.en0[i]['address'] && !/.*[a-z]+.*/g.test(Interfaces.en0[i]['address'])) {
         address = Interfaces.en0[i]['address'];
@@ -53,6 +56,7 @@ const DDNS = async (target, cb) => {
 
     let shouldUpdate = false;
     let shouldAdd = true;
+    let originIp = '';
 
     await client.request(describeSubParams.Action, describeSubParams, requestOption).then((result) => {
 
@@ -62,6 +66,7 @@ const DDNS = async (target, cb) => {
                 shouldAdd = false;
                 if (record.Value !== updateParmas.Value) {
                     shouldUpdate = true;
+                    originIp = record.Value;
                     updateParmas.RecordId = record.RecordId;
                 }
             });
@@ -71,7 +76,7 @@ const DDNS = async (target, cb) => {
 
     if (shouldUpdate) {
         await client.request(updateParmas.Action, updateParmas, requestOption).then((result) => {
-            cb('Update success!');
+            cb('Update success!', 'green', originIp, updateParmas.Value);
         }, (ex) => {
             console.log(ex);
         });
@@ -86,16 +91,20 @@ const DDNS = async (target, cb) => {
     }
 
     if (!shouldAdd && !shouldUpdate) {
-        cb('无更新');
+        cb('no update');
     }
+}
+
+const ipCheck = (ipAddress) => {
+    return /^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$/.test(ipAddress) && ipAddress  || '';
 }
 
 for (let hostname of hostNames) {
     let target = {
-        hostname: hostname,
-        address: address
+        hostname: hostname.host,
+        address: ipCheck(hostname.ip) || address
     };
-    DDNS(target, (msg) => {
-        console.log(`${new Date()} ==>  ${target.hostname} ==> ${msg}`)
+    DDNS(target, (msg, color, originIp, upIp) => {
+        console.log(`${new Date()} ==>  ${target.hostname} ==> ${msg} ${(originIp && `&& ` + originIp + ` ==To==> ` + upIp) || ''}`)
     });
 }

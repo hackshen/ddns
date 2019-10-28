@@ -4,7 +4,11 @@
 	"hostNames": [
 		{
 			"host": "test.hackshen.com",
-			"ip": "127.0.0.1"
+			"ip": "127.0.0."
+		},
+		{
+			"host": "music.hackshen.com",
+			"ip": ""
 		}
 	]
 }
