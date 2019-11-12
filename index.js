@@ -1,21 +1,32 @@
 const Core = require('@alicloud/pop-core');
-const os = require('os');
-const config = require('./config');
 const colors = require('colors');
+const chokidar = require('chokidar');
+const os = require('os');
+const fs = require('fs');
+const config = require('./config/');
+const Interfaces = os.networkInterfaces();
 
-const {
-    hostNames
-} = config;
 
 // 获取本地IP
-const Interfaces = os.networkInterfaces();
 let address = null;
-
 for (let i = 0; i < Interfaces.en0.length; i++) {
     if (Interfaces.en0[i]['address'] && !/.*[a-z]+.*/g.test(Interfaces.en0[i]['address'])) {
         address = Interfaces.en0[i]['address'];
     }
 }
+
+const watcher = chokidar.watch('./config/', {
+  ignored: /(^|[\/\\])\../,
+  persistent: true
+});
+
+watcher
+    .on('change', () => {
+        const config = JSON.parse(fs.readFileSync('./config/index.json','utf8'));
+        updateIp(config);
+    });
+
+
 
 const client = new Core({
     accessKeyId: config.AccessKeyId,
@@ -99,12 +110,14 @@ const ipCheck = (ipAddress) => {
     return /^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$/.test(ipAddress) && ipAddress  || '';
 }
 
-for (let hostname of hostNames) {
-    let target = {
-        hostname: hostname.host,
-        address: ipCheck(hostname.ip) || address
-    };
-    DDNS(target, (msg, color, originIp, upIp) => {
-        console.log(`${new Date()} ==>  ${target.hostname} ==> ${msg} ${(originIp && `&& ` + originIp + ` ==To==> ` + upIp) || ''}`)
-    });
+const updateIp = (config) => {
+    for (let hostname of config.hostNames) {
+        let target = {
+            hostname: hostname.host,
+            address: ipCheck(hostname.ip) || address
+        };
+        DDNS(target, (msg, color, originIp, upIp) => {
+            console.log(`${new Date()} ==>  ${target.hostname} ==> ${msg} ${(originIp && `&& ` + originIp + ` ==To==> ` + upIp) || ''}`)
+        });
+    }
 }

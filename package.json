@@ -19,6 +19,7 @@
   "homepage": "https://github.com/hackshen/ddns#readme",
   "dependencies": {
     "@alicloud/pop-core": "^1.7.7",
+    "chokidar": "^3.3.0",
     "colors": "^1.4.0"
   }
 }
